@@ -6,6 +6,7 @@
 //		2. Add preprocessing and validation to CSV imports
 //		3. Handling CSV files more robustly
 //		4. Put a .csv filter in the file browser
+// 		5. Handled fields within quotation marks
 
 'use strict';
 
@@ -116,9 +117,13 @@ csvImport.directive('ngCsvImport', function() {
 
 				var unparsed_str = content.csv;
 				var slice_idx = lines[0].length
+				var start_quot_idx = -1
+				var end_quot_idx = -1
 
 				while (!eof) {
 
+					// Slicing index is the point at which a new field starts
+					// Use the slice index from the previous iteration and slice the string at that index.
 					unparsed_str = unparsed_str.slice(slice_idx + 1);
 
 					eof = unparsed_str.length == 0;
@@ -126,9 +131,9 @@ csvImport.directive('ngCsvImport', function() {
 					if (fldCtr === 0)
 						entry = {}
 
-					// Read the unparsed_str string and find the index of the first separator
+					// Read the unparsed_str string and find the index of the first separator(comma)
 					slice_idx = unparsed_str.indexOf(content.separator)
-					
+
 					if (fldCtr === headerCount - 1) {
 						// We've read fields as many as the number of headers
 						// See if there's a new line before the next comma.
@@ -154,11 +159,37 @@ csvImport.directive('ngCsvImport', function() {
 						slice_idx = unparsed_str.length - 1
 					}
 
+					// See if there is a quotation mark somewhere before the next comma
+          start_quot_idx = unparsed_str.indexOf('"')
+          if (start_quot_idx >= 0 && start_quot_idx < slice_idx) {
+          	// There is a quotation somewhere in this field value
+          	
+          	// Find the end quotation mark
+						end_quot_idx = start_quot_idx + 1 + unparsed_str.slice(start_quot_idx+1).indexOf('"')
+						if (end_quot_idx < 0) {
+							var msg = "Invalid CSV File" +
+												"\nInvalid quoted string found. "+
+												"Please email lms@avanti.in with this CSV file as attachment."+
+												"\n\n\nAborting upload."
+							result = []
+							window.alert(msg)
+							return []	
+						}
+
+						// Found the paired quotation mark
+						// Go to the first comma after the ending quotation mark
+						// Se the slicing index as that point
+						slice_idx = (end_quot_idx + 1) + unparsed_str.slice(end_quot_idx + 1).indexOf(content.separator)
+          }
+
+          // Final slice
+
 					// Get the field value and preprocess it
 					fldValue = unparsed_str.slice(0, slice_idx);
-          fldValue = fldValue.replace(/\n/g,""); 	// Remove internal carriage-returns
-          fldValue = fldValue.replace(/\"/g,""); 	// Remove double quotes
           fldValue = fldValue.trim();							// Trim
+          fldValue = fldValue.replace(/\n/g,""); 	// Remove internal carriage-returns
+          fldValue = fldValue.replace(/\"/g,""); 	// Remove internal quotation marks
+          
 					entry[headers[fldCtr]] = fldValue				// Add it to the entry
 
 					// If we've reached the end of one entry, push it into the result
@@ -172,8 +203,11 @@ csvImport.directive('ngCsvImport', function() {
 				}
 
 				if (fldCtr !== 0) {
-					var msg = "Invalid CSV File\n\nThe last entry could not be read correctly, possibly" +
-								"\nbecause it doesn't contain the correct number of fields. Please fix the file and retry.\n\nAborting upload."
+					var msg = "Issues found with the data being uploaded!" +
+										"\n\nPlease look through each field of the file carefully for missing commas or extra commas. "+
+										"If this file has been manually edited, please download it from the spreadsheet. Please fix the file and retry." + 
+										"\n\nIn case this doesn't help, please email lms@avanti.in with this CSV file as attachment."+
+										"\n\nAborting upload."
 					result = []
 					window.alert(msg)
 				}
