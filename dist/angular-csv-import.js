@@ -6,7 +6,7 @@
 //		2. Add preprocessing and validation to CSV imports
 //		3. Handling CSV files more robustly
 //		4. Put a .csv filter in the file browser
-// 		5. Handled fields within quotation marks
+// 		5. Handled fields within quotation marks.
 
 'use strict';
 
