@@ -103,8 +103,9 @@ csvImport.directive('ngCsvImport', function() {
 				var headerCount = 0;
         var headers=lines[0].split(content.separator);
         headerCount = headers.length;
+        var header_desc_separator = "|"
         for (var hdrCtr = 0; hdrCtr < headerCount; hdrCtr++) {
-          headers[hdrCtr] = headers[hdrCtr].trim();
+          headers[hdrCtr] = headers[hdrCtr].split(header_desc_separator)[0].trim();
         }
 				
 				// Start with the first character after the end of the first line
